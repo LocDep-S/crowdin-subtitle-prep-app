@@ -2,10 +2,10 @@
   "identifier": "subtitle-source-prep",
   "name": "Subtitle Source Prep",
   "description": "Clean up a literal transcript .srt into a properly segmented, timed subtitle file (Netflix/BBC-style line length, reading speed, and duration rules) before it ever becomes a project's source content, then push the result into any project as a new source file.",
-  "baseUrl": "https://YOUR_PUBLIC_HOST",
+  "baseUrl": "https://crowdin-subtitle-prep-app.onrender.com",
   "authentication": {
     "type": "crowdin_app",
-    "clientId": "YOUR_OAUTH_CLIENT_ID"
+    "clientId": "2gptkipertpLWfxtcCmy"
   },
   "events": {
     "installed": "/hooks/installed",
