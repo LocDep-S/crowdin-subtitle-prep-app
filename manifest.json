@@ -12,7 +12,8 @@
     "uninstall": "/hooks/uninstall"
   },
   "scopes": [
-    "project"
+    "project.settings",
+        "project.source"
   ],
   "modules": {
     "organization-menu": [
