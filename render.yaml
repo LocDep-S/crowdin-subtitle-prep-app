@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: crowdin-subtitle-prep-app
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: CROWDIN_CLIENT_ID
+        sync: false
+      - key: CROWDIN_CLIENT_SECRET
+        sync: false

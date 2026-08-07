@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Subtitle Prep</title>
+<link rel="stylesheet" href="/public/prep.css" />
+<!-- Must be loaded from Crowdin's CDN (cross-domain messaging bridge), not self-hosted -->
+<script src="https://cdn.crowdin.com/apps/dist/iframe.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Subtitle Prep</h1>
+      <p class="subtitle">Turn a literal transcript .srt into a properly segmented, timed subtitle file - then push it into a project as the source content.</p>
+    </header>
+
+    <section id="upload-zone">
+      <label for="file-input" id="drop-label">
+        <span id="drop-text">Drop a .srt file here, or click to choose one</span>
+      </label>
+      <input id="file-input" type="file" accept=".srt" class="hidden" />
+      <div id="file-name" class="hidden"></div>
+    </section>
+
+    <section id="settings-panel" class="hidden">
+      <div class="row">
+        <label>Preset
+          <select id="preset-select">
+            <option value="netflix">Netflix Timed Text Style Guide</option>
+            <option value="bbc">BBC Subtitle Guidelines</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="strip-disfluencies" checked />
+          Strip filler words / stutters (um, uh, "I I I"&hellip;)
+        </label>
+      </div>
+      <div class="row thresholds">
+        <label>Max chars/line <input type="number" id="maxCharsPerLine" min="10" max="80" /></label>
+        <label>Max lines <input type="number" id="maxLines" min="1" max="4" /></label>
+        <label>Target chars/sec <input type="number" id="targetCps" min="5" max="40" step="0.5" /></label>
+        <label>Min duration (ms) <input type="number" id="minDurationMs" min="100" step="50" /></label>
+        <label>Max duration (ms) <input type="number" id="maxDurationMs" min="1000" step="500" /></label>
+        <label>Min gap (ms) <input type="number" id="minGapMs" min="0" step="10" /></label>
+      </div>
+      <div class="row actions">
+        <button id="clean-btn" class="primary">Clean transcript</button>
+        <span id="status"></span>
+      </div>
+    </section>
+
+    <section id="results" class="hidden">
+      <div id="warnings-box" class="hidden">
+        <h3>Needs a human look (<span id="warnings-count"></span>)</h3>
+        <ul id="warnings-list"></ul>
+      </div>
+
+      <div id="stats-box"></div>
+
+      <ul id="cue-preview"></ul>
+
+      <div class="row actions">
+        <button id="download-btn">Download cleaned .srt</button>
+        <button id="upload-btn" class="primary">Upload to project&hellip;</button>
+      </div>
+    </section>
+
+    <div id="upload-modal" class="hidden">
+      <div class="modal-content">
+        <h3>Upload to project</h3>
+        <label>Project
+          <select id="project-select"></select>
+        </label>
+        <label>File name
+          <input type="text" id="upload-filename" />
+        </label>
+        <div class="row actions">
+          <button id="upload-confirm-btn" class="primary">Upload</button>
+          <button id="upload-cancel-btn">Cancel</button>
+        </div>
+        <div id="upload-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/public/prep.js"></script>
+</body>
+</html>

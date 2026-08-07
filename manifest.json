@@ -1,0 +1,27 @@
+{
+  "identifier": "subtitle-source-prep",
+  "name": "Subtitle Source Prep",
+  "description": "Clean up a literal transcript .srt into a properly segmented, timed subtitle file (Netflix/BBC-style line length, reading speed, and duration rules) before it ever becomes a project's source content, then push the result into any project as a new source file.",
+  "baseUrl": "https://YOUR_PUBLIC_HOST",
+  "authentication": {
+    "type": "crowdin_app",
+    "clientId": "YOUR_OAUTH_CLIENT_ID"
+  },
+  "events": {
+    "installed": "/hooks/installed",
+    "uninstall": "/hooks/uninstall"
+  },
+  "scopes": [
+    "project"
+  ],
+  "modules": {
+    "organization-menu": [
+      {
+        "key": "subtitle-source-prep-menu",
+        "name": "Subtitle Prep",
+        "url": "/public/prep.html",
+        "icon": "/public/icon.png"
+      }
+    ]
+  }
+}
