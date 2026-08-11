@@ -21,6 +21,8 @@ const els = {
   minDurationMs: document.getElementById("minDurationMs"),
   maxDurationMs: document.getElementById("maxDurationMs"),
   minGapMs: document.getElementById("minGapMs"),
+  gapDeadZoneMs: document.getElementById("gapDeadZoneMs"),
+  outTimeBufferMs: document.getElementById("outTimeBufferMs"),
   cleanBtn: document.getElementById("clean-btn"),
   status: document.getElementById("status"),
   results: document.getElementById("results"),
@@ -47,7 +49,7 @@ const state = {
   projects: null,
 };
 
-const THRESHOLD_FIELDS = ["maxCharsPerLine", "maxLines", "targetCps", "minDurationMs", "maxDurationMs", "minGapMs"];
+const THRESHOLD_FIELDS = ["maxCharsPerLine", "maxLines", "targetCps", "minDurationMs", "maxDurationMs", "minGapMs", "gapDeadZoneMs", "outTimeBufferMs"];
 
 function getJwtToken() {
   return new Promise((resolve) => {
