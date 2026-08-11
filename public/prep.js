@@ -146,7 +146,7 @@ function renderCuePreview(cues) {
     const overLines = cue.lineCount > (state.cleanResult.settings.maxLines || 2);
     li.innerHTML = `
       <div class="times">${msToTime(cue.startMs)} &rarr; ${msToTime(cue.endMs)} <span class="dur">(${((cue.endMs - cue.startMs) / 1000).toFixed(2)}s)</span></div>
-      <div class="text">${escapeHtml(cue.text).replace(/\n/g, "<br/>")}</div>
+      <div class="text">${renderCueText(cue.text)}</div>
       <div class="meta ${dense ? "warn" : ""} ${overLines ? "warn" : ""}">${cue.lineCount} line${cue.lineCount === 1 ? "" : "s"} &middot; ${cue.cps} chars/sec</div>
     `;
     els.cuePreview.appendChild(li);
@@ -167,6 +167,17 @@ function msToTime(totalMs) {
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Escape everything, then un-escape just the <i>/</i> tags our own engine
+// adds for voice-over/song lines, so the preview shows real italics instead
+// of literal "<i>" text - safe since those are the only tags this app ever
+// emits into cue text.
+function renderCueText(text) {
+    return escapeHtml(text)
+      .replace(/&lt;i&gt;/g, "<i>")
+      .replace(/&lt;\/i&gt;/g, "</i>")
+      .replace(/\n/g, "<br/>");
 }
 
 els.cleanBtn.addEventListener("click", async () => {
