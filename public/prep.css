@@ -72,6 +72,16 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 #warnings-box h3 { margin: 0 0 6px; font-size: 13px; color: #b91c1c; }
 #warnings-list { margin: 0; padding-left: 18px; font-size: 12px; color: #7a2e2e; }
 
+#edits-box {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #bfdbfe;
+  background: #f0f7ff;
+  border-radius: 6px;
+}
+#edits-box h3 { margin: 0 0 6px; font-size: 13px; color: #1d4ed8; }
+#edits-list { margin: 0; padding-left: 18px; font-size: 12px; color: #2a4a7a; }
+
 #stats-box { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
 
 #cue-preview { list-style: none; margin: 0 0 16px; padding: 0; max-height: 420px; overflow-y: auto; border: 1px solid #eef0f5; border-radius: 6px; }
