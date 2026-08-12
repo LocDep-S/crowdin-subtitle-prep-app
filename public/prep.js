@@ -34,6 +34,12 @@ const els = {
   editsCount: document.getElementById("edits-count"),
   editsList: document.getElementById("edits-list"),
   statsBox: document.getElementById("stats-box"),
+  videoUrlInput: document.getElementById("video-url-input"),
+  videoLoadBtn: document.getElementById("video-load-btn"),
+  playerWrap: document.getElementById("player-wrap"),
+  subtitleOverlay: document.getElementById("subtitle-overlay"),
+  timeReadout: document.getElementById("time-readout"),
+  fullscreenBtn: document.getElementById("fullscreen-btn"),
   cuePreview: document.getElementById("cue-preview"),
   downloadBtn: document.getElementById("download-btn"),
   uploadBtn: document.getElementById("upload-btn"),
@@ -51,6 +57,9 @@ const state = {
   presets: {},
   cleanResult: null,
   projects: null,
+  player: null,
+  playerReady: false,
+  activeCueIndex: null,
 };
 
 const THRESHOLD_FIELDS = ["maxCharsPerLine", "maxLines", "targetCps", "minDurationMs", "maxDurationMs", "minGapMs", "gapDeadZoneMs", "outTimeBufferMs"];
@@ -202,7 +211,7 @@ function renderCuePreview(cues) {
       '<span class="dur">(' + ((cue.endMs - cue.startMs) / 1000).toFixed(2) + 's)</span>' +
       overlapFlag +
       '</div>' +
-      '<textarea class="cue-text" rows="' + Math.max(2, cue.text.split("\n").length) + '">' + escapeHtml(cue.text) + '</textarea>' +
+      '<textarea class="cue-text" title="Click to seek the loaded video to this cue start time" rows="' + Math.max(2, cue.text.split("\n").length) + '">' + escapeHtml(cue.text) + '</textarea>' +
       '<div class="meta ' + warnClass + '">' + meta.lineCount + ' line' + (meta.lineCount === 1 ? "" : "s") + ' &middot; ' + meta.cps + ' chars/sec</div>' +
       '<div class="cue-actions">' +
       '<button type="button" data-action="clone">Clone</button>' +
@@ -305,6 +314,12 @@ els.cuePreview.addEventListener("change", (e) => {
 });
 
 els.cuePreview.addEventListener("click", (e) => {
+  if (e.target.matches(".cue-text")) {
+    const li = e.target.closest(".cue");
+    const cue = state.cleanResult.cues[Number(li.dataset.index)];
+    seekTo(cue.startMs);
+    return;
+  }
   const btn = e.target.closest("button[data-action]");
   if (!btn) return;
   const li = btn.closest(".cue");
@@ -345,12 +360,116 @@ function renderCueText(text) {
       .replace(/\n/g, "<br/>");
 }
 
+function youTubeIdFromUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1);
+    if (u.searchParams.get("v")) return u.searchParams.get("v");
+    const m = u.pathname.match(/\/embed\/([^/?]+)/);
+    if (m) return m[1];
+  } catch (e) { /* not a URL */ }
+  return null;
+}
+
+function loadYouTubeApiThen(cb) {
+  if (window.YT && window.YT.Player) return cb();
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+  window.onYouTubeIframeAPIReady = cb;
+}
+
+function mountPlayer(videoUrl) {
+  const videoId = youTubeIdFromUrl(videoUrl);
+  if (!videoId) {
+    els.status.textContent = "Could not parse a YouTube video ID from that link.";
+    return;
+  }
+  els.playerWrap.classList.remove("hidden");
+  state.playerReady = false;
+  loadYouTubeApiThen(() => {
+    if (state.player && typeof state.player.destroy === "function") state.player.destroy();
+    state.player = new YT.Player("player", {
+      videoId,
+      playerVars: { rel: 0, modestbranding: 1, cc_load_policy: 0, fs: 0 },
+      events: { onReady: () => { state.playerReady = true; startTimeSync(); } },
+    });
+  });
+}
+
+els.videoLoadBtn.addEventListener("click", () => {
+  const url = els.videoUrlInput.value.trim();
+  if (!url) return;
+  mountPlayer(url);
+});
+
+function seekTo(ms) {
+  if (state.playerReady) state.player.seekTo(ms / 1000, true);
+}
+
+function safeSubtitleHtml(text) {
+  const escaped = escapeHtml(text);
+  return escaped.replace(/&lt;(\/?)(i|b|u)&gt;/gi, (_, slash, tag) => `<${slash}${tag.toLowerCase()}>`);
+}
+
+function renderSubtitleOverlay(cue) {
+  els.subtitleOverlay.innerHTML = cue && cue.text ? safeSubtitleHtml(cue.text) : "";
+}
+function highlightActiveCue(index) {
+  if (index === state.activeCueIndex) return;
+  state.activeCueIndex = index;
+  els.cuePreview.querySelectorAll(".cue").forEach((li) => {
+    li.classList.toggle("active", Number(li.dataset.index) === index);
+  });
+  if (index != null) {
+    const el = els.cuePreview.querySelector(`[data-index="${index}"]`);
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+function msToTimeReadout(ms) {
+  const total = Math.max(0, Math.round(ms));
+  const mm = String(Math.floor(total / 60000)).padStart(2, "0");
+  const ss = String(Math.floor((total % 60000) / 1000)).padStart(2, "0");
+  const mss = String(total % 1000).padStart(3, "0");
+  return `${mm}:${ss}.${mss}`;
+}
+let timeSyncStarted = false;
+function startTimeSync() {
+  if (timeSyncStarted) return;
+  timeSyncStarted = true;
+  setInterval(() => {
+    if (!state.playerReady || !state.cleanResult) return;
+    const currentMs = state.player.getCurrentTime() * 1000;
+    const cues = state.cleanResult.cues;
+    const activeIndex = cues.findIndex((c) => currentMs >= c.startMs && currentMs < c.endMs);
+    highlightActiveCue(activeIndex >= 0 ? activeIndex : null);
+    renderSubtitleOverlay(activeIndex >= 0 ? cues[activeIndex] : null);
+    els.timeReadout.textContent = msToTimeReadout(currentMs);
+  }, 250);
+}
+function fullscreenElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+els.fullscreenBtn.addEventListener("click", () => {
+  if (fullscreenElement() === els.playerWrap) {
+    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    return;
+  }
+  const request = els.playerWrap.requestFullscreen || els.playerWrap.webkitRequestFullscreen;
+  request?.call(els.playerWrap);
+});
+function onFullscreenChange() {
+  els.fullscreenBtn.textContent = fullscreenElement() === els.playerWrap ? "⤦" : "⛶";
+}
+document.addEventListener("fullscreenchange", onFullscreenChange);
+document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+
 els.cleanBtn.addEventListener("click", async () => {
   els.status.textContent = "Cleaning…";
   els.cleanBtn.disabled = true;
   try {
     const result = await api("/api/clean", { method: "POST", body: { rawSrt: state.rawSrt, settings: currentSettings() } });
     state.cleanResult = result;
+    state.activeCueIndex = null;
+    els.subtitleOverlay.innerHTML = "";
     els.status.textContent = "";
     els.results.classList.remove("hidden");
     els.statsBox.textContent = `${result.stats.inputCueCount} cue${result.stats.inputCueCount === 1 ? "" : "s"} in the original file → ${result.stats.outputCueCount} cue${result.stats.outputCueCount === 1 ? "" : "s"} after cleanup.`;
