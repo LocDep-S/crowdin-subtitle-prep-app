@@ -64,7 +64,7 @@ async function requireJwt(req, res, next) {
 
 // GET /api/presets - static, no auth needed (just the preset table for the UI's dropdown/defaults)
 app.get("/api/presets", (req, res) => {
-  res.json({ presets: prep.PRESETS, defaults: prep.DEFAULT_SETTINGS });
+  res.json({ presets: prep.PRESETS, defaults: prep.DEFAULT_SETTINGS, languages: prep.LANGUAGES });
 });
 
 // POST /api/clean { rawSrt, settings } -> { cues, warnings, outputSrt, stats }
