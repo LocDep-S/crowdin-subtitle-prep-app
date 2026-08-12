@@ -139,21 +139,155 @@ for (const field of THRESHOLD_FIELDS) {
   });
 }
 
+// Cue text/timing is editable in place; these helpers keep the derived
+// numbers (line count, cps, overlap) and the SRT the download/upload
+// buttons use in sync with whatever the user has typed, rather than
+// re-running the server-side engine on every keystroke.
+function computeCueMeta(cue) {
+  const duration = cue.endMs - cue.startMs;
+  const lineCount = cue.text.split("\n").filter((l) => l.length > 0).length || 1;
+  const plain = cue.text.split("<i>").join("").split("</i>").join("");
+  const cps = Math.round((plain.length / Math.max(duration / 1000, 0.001)) * 10) / 10;
+  return { lineCount, cps };
+}
+
+const TIME_RE = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
+function timeToMs(text) {
+  const m = TIME_RE.exec((text || "").trim());
+  if (!m) return null;
+  const [, hh, mm, ss, ms] = m;
+  return (
+    parseInt(hh, 10) * 3600000 +
+    parseInt(mm, 10) * 60000 +
+    parseInt(ss, 10) * 1000 +
+    parseInt(ms.padEnd(3, "0").slice(0, 3), 10)
+    );
+}
+
+function serializeSrt(cues) { return cues.map((cue, i) => `${i + 1}\n${msToTime(cue.startMs)} --> ${msToTime(cue.endMs)}\n${cue.text}\n`).join("\n"); }
+
 function renderCuePreview(cues) {
-  els.cuePreview.innerHTML = "";
-  for (const cue of cues) {
-    const li = document.createElement("li");
-    li.className = "cue";
-    const dense = cue.cps > (state.cleanResult.settings.targetCps || 17);
-    const overLines = cue.lineCount > (state.cleanResult.settings.maxLines || 2);
-    li.innerHTML = `
-      <div class="times">${msToTime(cue.startMs)} &rarr; ${msToTime(cue.endMs)} <span class="dur">(${((cue.endMs - cue.startMs) / 1000).toFixed(2)}s)</span></div>
-      <div class="text">${renderCueText(cue.text)}</div>
-      <div class="meta ${dense ? "warn" : ""} ${overLines ? "warn" : ""}">${cue.lineCount} line${cue.lineCount === 1 ? "" : "s"} &middot; ${cue.cps} chars/sec</div>
-    `;
-    els.cuePreview.appendChild(li);
+  const settings = state.cleanResult.settings;
+  els.cuePreview.innerHTML = cues.map((cue, i) => {
+    const meta = computeCueMeta(cue);
+    cue.lineCount = meta.lineCount;
+    cue.cps = meta.cps;
+    const dense = meta.cps > (settings.targetCps || 20);
+    const overLines = meta.lineCount > (settings.maxLines || 2);
+    const next = cues[i + 1];
+    const overlaps = !!(next && cue.endMs > next.startMs);
+    const rowClass = "cue" + (overlaps ? " overlap" : "");
+    const overlapFlag = overlaps ? '<span class="overlap-flag">overlaps next cue</span>' : "";
+    const warnClass = (dense || overLines) ? "warn" : "";
+    return '<li class="' + rowClass + '" data-index="' + i + '">' +
+      '<div class="times">' +
+      '<input type="text" class="time-input" data-role="start" value="' + msToTime(cue.startMs) + '" />' +
+      '<span>&rarr;</span>' +
+      '<input type="text" class="time-input" data-role="end" value="' + msToTime(cue.endMs) + '" />' +
+      '<span class="dur">(' + ((cue.endMs - cue.startMs) / 1000).toFixed(2) + 's)</span>' +
+      overlapFlag +
+      '</div>' +
+      '<textarea class="cue-text" rows="' + Math.max(2, cue.text.split("\n").length) + '">' + escapeHtml(cue.text) + '</textarea>' +
+      '<div class="meta ' + warnClass + '">' + meta.lineCount + ' line' + (meta.lineCount === 1 ? "" : "s") + ' &middot; ' + meta.cps + ' chars/sec</div>' +
+      '<div class="cue-actions">' +
+      '<button type="button" data-action="clone">Clone</button>' +
+      '<button type="button" data-action="delete">Delete</button>' +
+      '</div>' +
+      '</li>';
+  }).join("");
+}
+
+function renderWarningsBox() {
+  const warnings = state.cleanResult.warnings;
+  if (warnings.length) {
+    els.warningsBox.classList.remove("hidden");
+    els.warningsCount.textContent = warnings.length;
+    els.warningsList.innerHTML = warnings.map((w) => "<li>" + escapeHtml(w) + "</li>").join("");
+  } else {
+    els.warningsBox.classList.add("hidden");
   }
 }
+
+// Re-checks every cue against the current thresholds after an edit, so the
+// warnings list reflects what's actually on screen rather than the one-time
+// result of the initial /api/clean call.
+function recomputeWarnings() {
+  const settings = state.cleanResult.settings;
+  const cues = state.cleanResult.cues;
+  const warnings = [];
+  cues.forEach((cue, i) => {
+    const meta = computeCueMeta(cue);
+    cue.lineCount = meta.lineCount;
+    cue.cps = meta.cps;
+    const preview = cue.text.split("\n").join(" ").slice(0, 40);
+    if (meta.lineCount > settings.maxLines) {
+      warnings.push("Cue at " + cue.startMs + "ms wraps to " + meta.lineCount + " lines (max " + settings.maxLines + ') - "' + preview + '…"');
+    }
+    if (meta.cps > settings.targetCps) {
+      warnings.push("Cue at " + cue.startMs + "ms reads at ~" + meta.cps + " chars/sec (target " + settings.targetCps + ') - "' + preview + '…"');
+    }
+    const next = cues[i + 1];
+    if (next && cue.endMs > next.startMs) {
+      warnings.push("Cue at " + cue.startMs + "ms overlaps the next cue (ends at " + cue.endMs + "ms, next starts at " + next.startMs + "ms) - fix the timing before exporting.");
+    }
+  });
+  state.cleanResult.warnings = warnings;
+  els.statsBox.textContent = state.cleanResult.stats.inputCueCount + " cue" + (state.cleanResult.stats.inputCueCount === 1 ? "" : "s") + " in the original file → " + cues.length + " cue" + (cues.length === 1 ? "" : "s") + " after cleanup (edited).";
+  renderWarningsBox();
+}
+
+function updateCueMetaDisplay(li, cue) {
+  const settings = state.cleanResult.settings;
+  const meta = computeCueMeta(cue);
+  cue.lineCount = meta.lineCount;
+  cue.cps = meta.cps;
+  const dense = meta.cps > (settings.targetCps || 20);
+  const overLines = meta.lineCount > (settings.maxLines || 2);
+  const metaEl = li.querySelector(".meta");
+  metaEl.textContent = meta.lineCount + " line" + (meta.lineCount === 1 ? "" : "s") + " · " + meta.cps + " chars/sec";
+  metaEl.classList.toggle("warn", dense || overLines);
+}
+
+// Editing is done via delegated listeners on the list container (rather than
+// per-cue bindings) since cue rows get replaced wholesale on clone/delete.
+els.cuePreview.addEventListener("input", (e) => {
+  if (!e.target.matches(".cue-text")) return;
+  const li = e.target.closest(".cue");
+  const cue = state.cleanResult.cues[Number(li.dataset.index)];
+  cue.text = e.target.value;
+  updateCueMetaDisplay(li, cue);
+  recomputeWarnings();
+});
+
+els.cuePreview.addEventListener("change", (e) => {
+  if (!e.target.matches(".time-input")) return;
+  const li = e.target.closest(".cue");
+  const cue = state.cleanResult.cues[Number(li.dataset.index)];
+  const ms = timeToMs(e.target.value);
+  if (ms === null) {
+    e.target.classList.add("invalid");
+    return;
+  }
+  e.target.classList.remove("invalid");
+  if (e.target.dataset.role === "start") cue.startMs = ms;
+  else cue.endMs = ms;
+  renderCuePreview(state.cleanResult.cues);
+  recomputeWarnings();
+});
+
+els.cuePreview.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const li = btn.closest(".cue");
+  const index = Number(li.dataset.index);
+  if (btn.dataset.action === "clone") {
+    state.cleanResult.cues.splice(index + 1, 0, { ...state.cleanResult.cues[index] });
+  } else if (btn.dataset.action === "delete") {
+    state.cleanResult.cues.splice(index, 1);
+  }
+  renderCuePreview(state.cleanResult.cues);
+  recomputeWarnings();
+});
 
 function msToTime(totalMs) {
   totalMs = Math.max(0, Math.round(totalMs));
@@ -191,13 +325,7 @@ els.cleanBtn.addEventListener("click", async () => {
     els.status.textContent = "";
     els.results.classList.remove("hidden");
     els.statsBox.textContent = `${result.stats.inputCueCount} cue${result.stats.inputCueCount === 1 ? "" : "s"} in the original file → ${result.stats.outputCueCount} cue${result.stats.outputCueCount === 1 ? "" : "s"} after cleanup.`;
-    if (result.warnings.length) {
-      els.warningsBox.classList.remove("hidden");
-      els.warningsCount.textContent = result.warnings.length;
-      els.warningsList.innerHTML = result.warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join("");
-    } else {
-      els.warningsBox.classList.add("hidden");
-    }
+    renderWarningsBox();
     renderCuePreview(result.cues);
     els.uploadFilename.value = state.sourceFileName.replace(/\.srt$/i, "") + ".srt";
   } catch (err) {
@@ -209,7 +337,7 @@ els.cleanBtn.addEventListener("click", async () => {
 
 els.downloadBtn.addEventListener("click", () => {
   if (!state.cleanResult) return;
-  const blob = new Blob([state.cleanResult.outputSrt], { type: "text/plain" });
+  const blob = new Blob([serializeSrt(state.cleanResult.cues)], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -249,7 +377,7 @@ els.uploadConfirmBtn.addEventListener("click", async () => {
   try {
     const { file } = await api("/api/upload-to-project", {
       method: "POST",
-      body: { projectId, fileName, srtContent: state.cleanResult.outputSrt },
+      body: { projectId, fileName, srtContent: serializeSrt(state.cleanResult.cues) },
     });
     els.uploadStatus.textContent = `Done - "${file.name}" created (file ID ${file.id}).`;
   } catch (err) {
