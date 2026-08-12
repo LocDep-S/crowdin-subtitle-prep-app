@@ -35,6 +35,12 @@
           <input type="checkbox" id="strip-disfluencies" checked />
           Strip filler words / stutters (um, uh, "I I I"&hellip;) - also drops filler phrases and trailing hedges ("you know," "if that makes sense"&hellip;) from cues that are still too dense
         </label>
+        <label>Source language
+        <select id="source-language">
+        <option value="en">English</option>
+        </select>
+        </label>
+      <span id="language-note" class="hint">Controls which words count as filler/disfluencies and which words are "weak" to end a line on - the numeric limits above apply the same way regardless of language.</span>
       </div>
       <div class="row thresholds">
         <label>Max chars/line <input type="number" id="maxCharsPerLine" min="10" max="80" /></label>
