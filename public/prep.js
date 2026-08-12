@@ -15,6 +15,7 @@ const els = {
   settingsPanel: document.getElementById("settings-panel"),
   presetSelect: document.getElementById("preset-select"),
   stripDisfluencies: document.getElementById("strip-disfluencies"),
+  sourceLanguage: document.getElementById("source-language"),
   maxCharsPerLine: document.getElementById("maxCharsPerLine"),
   maxLines: document.getElementById("maxLines"),
   targetCps: document.getElementById("targetCps"),
@@ -83,7 +84,7 @@ async function api(path, opts = {}) {
 
 function currentSettings() {
   const preset = els.presetSelect.value;
-  const settings = { preset: preset === "custom" ? undefined : preset, stripDisfluencies: els.stripDisfluencies.checked };
+  const settings = { preset: preset === "custom" ? undefined : preset, stripDisfluencies: els.stripDisfluencies.checked, language: els.sourceLanguage.value };
   for (const field of THRESHOLD_FIELDS) {
     const val = parseFloat(els[field].value);
     if (!Number.isNaN(val)) settings[field] = val;
@@ -99,10 +100,21 @@ function fillThresholdsFromPreset(presetKey) {
   }
 }
 
+// Populated from the server's LANGUAGES table (lib/subtitlePrep.js) rather
+// than hardcoded here, so adding a new language later is a server-side-only
+// change - no HTML edit needed.
+function fillLanguageOptions(languages, selected) {
+  if (!languages) return;
+  els.sourceLanguage.innerHTML = Object.entries(languages)
+    .map(([code, label]) => `<option value="${code}">${escapeHtml(label)}</option>`).join("");
+  if (selected && languages[selected]) els.sourceLanguage.value = selected;
+}
+
 async function loadPresets() {
-  const { presets, defaults } = await fetch("/api/presets").then((r) => r.json());
+  const { presets, defaults, languages } = await fetch("/api/presets").then((r) => r.json());
   state.presets = presets;
   fillThresholdsFromPreset(defaults.preset || "netflix");
+  fillLanguageOptions(languages, defaults.language || "en");
 }
 
 function handleFile(file) {
