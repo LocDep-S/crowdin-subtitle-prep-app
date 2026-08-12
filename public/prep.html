@@ -70,7 +70,21 @@
       </div>
 
       <div id="stats-box"></div>
-
+      <section id="video-section">
+        <div class="row">
+          <label style="flex: 1">Preview against video (YouTube link, optional)
+              <input type="text" id="video-url-input" placeholder="https://youtu.be/..." />
+          </label>
+          <button id="video-load-btn">Load video</button>
+        </div>
+        <div id="player-wrap" class="hidden">
+          <div id="player"></div>
+          <div id="subtitle-overlay"></div>
+          <div id="time-readout" title="Current playback position (mm:ss.mmm) - matches the format of the cue time inputs">00:00.000</div>
+          <button id="fullscreen-btn" title="Fullscreen the video with subtitles overlaid">&#x26f6;</button>
+        </div>
+      </section>
+      
       <ul id="cue-preview"></ul>
 
       <div class="row actions">
