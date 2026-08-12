@@ -33,7 +33,7 @@
         </label>
         <label class="checkbox">
           <input type="checkbox" id="strip-disfluencies" checked />
-          Strip filler words / stutters (um, uh, "I I I"&hellip;)
+          Strip filler words / stutters (um, uh, "I I I"&hellip;) - also drops filler phrases and trailing hedges ("you know," "if that makes sense"&hellip;) from cues that are still too dense
         </label>
       </div>
       <div class="row thresholds">
@@ -56,6 +56,11 @@
       <div id="warnings-box" class="hidden">
         <h3>Needs a human look (<span id="warnings-count"></span>)</h3>
         <ul id="warnings-list"></ul>
+      </div>
+
+      <div id="edits-box" class="hidden">
+        <h3>Auto-edited for pacing (<span id="edits-count"></span>)</h3>
+      <ul id="edits-list"></ul>
       </div>
 
       <div id="stats-box"></div>
