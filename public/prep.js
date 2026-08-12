@@ -29,6 +29,9 @@ const els = {
   warningsBox: document.getElementById("warnings-box"),
   warningsCount: document.getElementById("warnings-count"),
   warningsList: document.getElementById("warnings-list"),
+  editsBox: document.getElementById("edits-box"),
+  editsCount: document.getElementById("edits-count"),
+  editsList: document.getElementById("edits-list"),
   statsBox: document.getElementById("stats-box"),
   cuePreview: document.getElementById("cue-preview"),
   downloadBtn: document.getElementById("download-btn"),
@@ -197,6 +200,20 @@ function renderCuePreview(cues) {
   }).join("");
 }
 
+// Shown once, right after /api/clean - a record of the automatic filler /
+// trailing-hedge trims the engine made on cues that were still too dense
+// after splitting and duration extension. Not re-run on later manual edits
+// (state.cleanResult.edits stays a historical record, not a live list).
+function renderEditsBox(edits) {
+    if (edits && edits.length) {
+          els.editsBox.classList.remove("hidden");
+          els.editsCount.textContent = edits.length;
+          els.editsList.innerHTML = edits.map((e) => "<li>" + escapeHtml(e) + "</li>").join("");
+    } else {
+          els.editsBox.classList.add("hidden");
+    }
+}
+
 function renderWarningsBox() {
   const warnings = state.cleanResult.warnings;
   if (warnings.length) {
@@ -326,6 +343,7 @@ els.cleanBtn.addEventListener("click", async () => {
     els.results.classList.remove("hidden");
     els.statsBox.textContent = `${result.stats.inputCueCount} cue${result.stats.inputCueCount === 1 ? "" : "s"} in the original file → ${result.stats.outputCueCount} cue${result.stats.outputCueCount === 1 ? "" : "s"} after cleanup.`;
     renderWarningsBox();
+    renderEditsBox(result.edits);
     renderCuePreview(result.cues);
     els.uploadFilename.value = state.sourceFileName.replace(/\.srt$/i, "") + ".srt";
   } catch (err) {
