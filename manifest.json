@@ -21,7 +21,7 @@
         "key": "subtitle-source-prep-menu",
         "name": "Subtitle Prep",
         "url": "/public/prep.html",
-        "icon": "/public/icon.png"
+        "icon": "/public/icon.svg"
       }
     ]
   }
